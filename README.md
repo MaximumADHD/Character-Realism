@@ -1,6 +1,6 @@
 # Character Realism
 
-By: CloneTrooper1019
+By: CloneTrooper1019<br/>
 Made for Roblox!
 
 ## What is this?
@@ -15,7 +15,8 @@ Made for Roblox!
 
 ## Installation
 
-This repository is setup as a [Rojo](https://rojo.space/) project! Syncing the `default.project.json` file of this project with your Studio session will automatically set it up. 
+This repository is setup as a [Rojo](https://rojo.space/) project!
+Syncing the `default.project.json` file of this project with your Studio session will automatically set it up. 
 
 Alternatively, you can drag and drop the `Realism.rbxm` file distributed in this project's [Releases](https://github.com/CloneTrooper1019/Character-Realism/releases) page into your game. Just make sure the `RealismServer` and `RealismClient` scripts are placed in their appropriate locations so they only execute once upon the game starting. I recommend placing `RealismServer` into the `ServerScriptService`, and `RealismClient` under `StarterPlayer/StarterPlayerScripts`!
 
