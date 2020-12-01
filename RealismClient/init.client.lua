@@ -182,7 +182,7 @@ function CharacterRealism:UpdateLookAngles(delta)
 	
 	-- Update all of the character look-angles
 	local camera = workspace.CurrentCamera
-	local origin = camera.CFrame.Position
+	local camPos = camera.CFrame.Position
 	
 	local player = self.Player
 	local dropList
@@ -198,7 +198,7 @@ function CharacterRealism:UpdateLookAngles(delta)
 		end
 		
 		local owner = Players:GetPlayerFromCharacter(character)
-		local dist = owner and owner:DistanceFromCharacter(origin) or 0
+		local dist = owner and owner:DistanceFromCharacter(camPos) or 0
 
 		if owner ~= player and dist > 30 then
 			continue
@@ -235,21 +235,25 @@ function CharacterRealism:UpdateLookAngles(delta)
 			end
 
 			local motor = data.Motor
-			local part0 = motor.Part0
-			
 			local origin = data.Origin
-			local setPart0 = origin and origin.Parent
 			
-			if part0 and part0 ~= setPart0 then
-				local newOrigin = part0:FindFirstChild(origin.Name)
+			if origin then
+				local part0 = motor.Part0
+				local setPart0 = origin.Parent
+				
+				if part0 and part0 ~= setPart0 then
+					local newOrigin = part0:FindFirstChild(origin.Name)
 
-				if newOrigin and newOrigin:IsA("Attachment") then
-					origin = newOrigin
-					data.Origin = newOrigin
+					if newOrigin and newOrigin:IsA("Attachment") then
+						origin = newOrigin
+						data.Origin = newOrigin
+					end
 				end
-			end
-
-			if not origin then
+				
+				origin = origin.CFrame
+			elseif data.C0 then
+				origin = data.C0
+			else
 				continue
 			end
 
@@ -293,10 +297,12 @@ function CharacterRealism:UpdateLookAngles(delta)
 			end
 
 			if dirty then
+				local rot = origin - origin.Position
+				
 				local cf = CFrame.Angles(0, fPitch, 0)
-					     * CFrame.Angles(fYaw, 0, 0)
-
-				motor.C0 = origin.CFrame * cf
+				         * CFrame.Angles(fYaw, 0, 0)
+				
+				motor.C0 = origin * rot:Inverse() * cf * rot
 			end
 		end
 	end
@@ -459,8 +465,13 @@ end
  
 function CharacterRealism:OnHumanoidAdded(humanoid)
 	if humanoid:IsA("Humanoid") then
-		self:MountLookAngle(humanoid)
-		self:MountMaterialSounds(humanoid)
+		if not self.SkipLookAngle then
+			self:MountLookAngle(humanoid)
+		end
+		
+		if not self.SkipMaterialSounds then
+			self:MountMaterialSounds(humanoid)
+		end
 	end
 end
 
