@@ -260,8 +260,8 @@ function CharacterRealism:UpdateLookAngles(delta)
 			local pitch = pitchState.Current or 0
 			local yaw = yawState.Current or 0
 
-			if rotator.SnapFirstPerson then
-				if name == "Head" and FpsCamera:IsInFirstPerson() then
+			if rotator.SnapFirstPerson and name == "Head" then
+				if FpsCamera:IsInFirstPerson() then
 					pitch = pitchState.Goal
 					yaw = yawState.Goal
 				end
@@ -271,7 +271,7 @@ function CharacterRealism:UpdateLookAngles(delta)
 			local fYaw = yaw * factors.Yaw
 
 			-- HACK: Make the arms rotate with a tool.
-			if name:sub(-3) == "Arm" then
+			if name:sub(-4) == " Arm" or name:sub(-8) == "UpperArm" then
 				local tool = character:FindFirstChildOfClass("Tool")
 				
 				if tool and not CollectionService:HasTag(tool, "NoArmRotation") then
@@ -360,8 +360,7 @@ function CharacterRealism:MountLookAngle(humanoid)
 		local player = Players:GetPlayerFromCharacter(character)
 		
 		if player == self.Player then
-			rotator.Pitch.SnapFirstPerson = true
-			rotator.Yaw.SnapFirstPerson = true
+			rotator.SnapFirstPerson = true
 		end
 		
 		-- Register this rotator for the character.
@@ -479,14 +478,9 @@ end
 -- This is intended for compatibility with AeroGameFramework modules,
 -- but the function will automatically be called if executed from a LocalScript.
 
-local started = false
-
 function CharacterRealism:Start()
-	if started then
-		return
-	else
-		started = true
-	end
+	assert(not _G.DefineRealismClient, "Realism can only be started once on the client!")
+	_G.DefineRealismClient = true
 	
 	for key, value in pairs(Config) do
 		self[key] = value
@@ -507,6 +501,10 @@ if script:IsA("ModuleScript") then
 	-- Return the system as a module table.
 	return CharacterRealism
 else
+	-- Sanity check
+	assert(script.Parent:IsA("PlayerScripts"), "RealismClient must be parented to the StarterPlayerScripts!")
+	assert(Players.LocalPlayer, "RealismClient expects a Player on the client to automatically start execution!")	
+	
 	-- Start automatically.
 	CharacterRealism:Start()
 end

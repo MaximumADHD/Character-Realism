@@ -27,6 +27,13 @@ local FpsCamera =
 		HairAttachment = true;
 		HatAttachment = true;
 	};
+
+	InvalidRotationStates =
+	{
+		Swimming = true; 
+		Climbing = true;
+		Dead = true;
+	};
 }
 
 -- Writes a warning to the output
@@ -105,7 +112,7 @@ function FpsCamera:IsValidPartToModify(part)
 		local accessory = part:FindFirstAncestorWhichIsA("Accoutrement")
 		
 		if accessory then
-			local timeOut = tick() + 10
+			local timeOut = tick() + 2
 			local headAtt
 
 			if part.Name ~= "Handle" then
@@ -118,8 +125,17 @@ function FpsCamera:IsValidPartToModify(part)
 
 			while not headAtt do
 				for _,child in pairs(part:GetChildren()) do
-					if child:IsA("Attachment") and self.HeadAttachments[child.Name] then
-						headAtt = child
+					if child:IsA("Attachment") then
+						local name = child.Name
+						
+						if name == "Attachment" then
+							continue
+						end
+						
+						if self.HeadAttachments[name] then
+							headAtt = child
+						end
+						
 						break
 					end
 				end
@@ -168,17 +184,16 @@ end
 
 function FpsCamera:UpdateTransparency()
 	assert(self ~= FpsCamera)
+	self:BaseUpdate()
 	
 	if self.ForceRefresh then
+		self.ForceRefresh = false
+		
 		if self.SetSubject then
 			local camera = workspace.CurrentCamera
 			self:SetSubject(camera.CameraSubject)
 		end
-		
-		self.ForceRefresh = false
 	end
-	
-	self:BaseUpdate()
 end
 
 -- Overloads functions in Roblox's TransparencyController 
@@ -311,7 +326,7 @@ function FpsCamera:OnRotationTypeChanged()
 					local state = subject:GetState()
 					local canRotate = true
 
-					if state.Name == "Swimming" or state.Name == "Climbing" then
+					if self.InvalidRotationStates[state.Name] then
 						canRotate = false
 					end
 
