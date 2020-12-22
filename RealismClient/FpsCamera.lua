@@ -124,12 +124,16 @@ function FpsCamera:IsValidPartToModify(part)
 			end
 
 			while not headAtt do
+				local hasAtt = false
+
 				for _,child in pairs(part:GetChildren()) do
 					if child:IsA("Attachment") then
 						local name = child.Name
 						
 						if name == "Attachment" then
 							continue
+						else
+							hasAtt = true
 						end
 						
 						if self.HeadAttachments[name] then
@@ -140,7 +144,7 @@ function FpsCamera:IsValidPartToModify(part)
 					end
 				end
 
-				if timeOut < tick() then
+				if timeOut < tick() or hasAtt then
 					break
 				elseif not headAtt then
 					RunService.Heartbeat:Wait()
