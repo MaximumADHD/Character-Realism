@@ -179,15 +179,15 @@ end
 function FpsCamera:SetupTransparency(character)
 	assert(self ~= FpsCamera)
 	self:BaseSetupTransparency(character)
-	if self.secondaryDescendantAddedConn then
-		self.secondaryDescendantAddedConn:Disconnect()
+	
+	if self.AttachmentListener then
+		self.AttachmentListener:Disconnect()
 	end
-	self.secondaryDescendantAddedConn = character.DescendantAdded:Connect(function(obj)
-		if obj:IsA("Attachment") then
-			if self.HeadAttachments[obj.Name] then
-				self.cachedParts[obj.Parent] = true
-				self.transparencyDirty = true
-			end
+	
+	self.AttachmentListener = character.DescendantAdded:Connect(function (obj)
+		if obj:IsA("Attachment") and self.HeadAttachments[obj.Name] then
+			self.cachedParts[obj.Parent] = true
+			self.transparencyDirty = true
 		end
 	end)
 end
