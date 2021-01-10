@@ -112,9 +112,6 @@ function FpsCamera:IsValidPartToModify(part)
 		local accessory = part:FindFirstAncestorWhichIsA("Accoutrement")
 		
 		if accessory then
-			local timeOut = tick() + 2
-			local headAtt
-
 			if part.Name ~= "Handle" then
 				local handle = accessory:FindFirstChild("Handle", true)
 
@@ -122,37 +119,13 @@ function FpsCamera:IsValidPartToModify(part)
 					part = handle
 				end
 			end
-
-			while not headAtt do
-				local hasAtt = false
-
-				for _,child in pairs(part:GetChildren()) do
-					if child:IsA("Attachment") then
-						local name = child.Name
-						
-						if name == "Attachment" then
-							continue
-						else
-							hasAtt = true
-						end
-						
-						if self.HeadAttachments[name] then
-							headAtt = child
-						end
-						
-						break
+			
+			for _,child in pairs(part:GetChildren()) do
+				if child:IsA("Attachment") then
+					if self.HeadAttachments[child.Name] then
+						return true
 					end
 				end
-
-				if timeOut < tick() or hasAtt then
-					break
-				elseif not headAtt then
-					RunService.Heartbeat:Wait()
-				end
-			end
-
-			if headAtt then
-				return true
 			end
 		elseif part.Name == "Head" then
 			local model = part.Parent
@@ -200,6 +173,26 @@ function FpsCamera:UpdateTransparency()
 	end
 end
 
+-- This is an overloaded function for TransparencyController:SetupTransparency(character)
+-- Do not call directly, or it will throw an assertion!
+
+function FpsCamera:SetupTransparency(character)
+	assert(self ~= FpsCamera)
+	self:BaseSetupTransparency(character)
+	if self.secondaryDescendantAddedConn then
+		self.secondaryDescendantAddedConn:Disconnect()
+	end
+	self.secondaryDescendantAddedConn = character.DescendantAdded:Connect(function(obj)
+		if obj:IsA("Attachment") then
+			if self.HeadAttachments[obj.Name] then
+				self.cachedParts[obj.Parent] = true
+				self.transparencyDirty = true
+			end
+		end
+	end)
+end
+
+
 -- Overloads functions in Roblox's TransparencyController 
 -- module with replacement functions in the FpsCamera.
 
@@ -216,9 +209,16 @@ function FpsCamera:MountTransparency(Transparency)
 	if Transparency.IsValidPartToModify then
 		Transparency.IsValidPartToModify = self.IsValidPartToModify
 		Transparency.HeadAttachments = self.HeadAttachments
-		Transparency.ForceRefresh = true
+		Transparency.ForceRefresh = true		
 	else
 		self:Warn("MountTransparency - Could not find Transparency:IsValidPartToModify(part)!")
+	end
+	
+	if Transparency.SetupTransparency then
+		Transparency.BaseSetupTransparency = Transparency.SetupTransparency
+		Transparency.SetupTransparency = self.SetupTransparency
+	else
+		self:Warn("MountTransparency - Could not find Transparency:SetupTransparency(character)!")
 	end
 end
 
@@ -314,7 +314,7 @@ function FpsCamera:OnRotationTypeChanged()
 			subject.AutoRotate = false
 			
 			RunService:BindToRenderStep("FpsCamera", 1000, function (delta)
-				if subject.AutoRotate or not subject:IsDescendantOf(game) then
+				if subject.AutoRotate or not subject:IsDescendantOf(game) or (subject.SeatPart and subject.SeatPart:IsA("VehicleSeat")) then
 					RunService:UnbindFromRenderStep("FpsCamera")
 					return
 				end
