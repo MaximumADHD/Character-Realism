@@ -502,7 +502,7 @@ if script:IsA("ModuleScript") then
 	return CharacterRealism
 else
 	-- Sanity check
-	assert(script.Parent:IsA("PlayerScripts"), "RealismClient must be parented to the StarterPlayerScripts!")
+	assert(script:FindFirstAncestorOfClass("PlayerScripts"), "RealismClient must be a descendant of the PlayerScripts!")
 	assert(Players.LocalPlayer, "RealismClient expects a Player on the client to automatically start execution!")	
 	
 	-- Start automatically.
