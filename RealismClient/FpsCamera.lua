@@ -209,7 +209,7 @@ function FpsCamera:MountTransparency(Transparency)
 	if Transparency.IsValidPartToModify then
 		Transparency.IsValidPartToModify = self.IsValidPartToModify
 		Transparency.HeadAttachments = self.HeadAttachments
-		Transparency.ForceRefresh = true		
+		Transparency.ForceRefresh = true
 	else
 		self:Warn("MountTransparency - Could not find Transparency:IsValidPartToModify(part)!")
 	end
