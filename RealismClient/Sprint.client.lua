@@ -1,26 +1,33 @@
-script.Parent = game.StarterPlayer.StarterCharacterScripts
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- Hedreon, 2021
+-- Realism Sprint
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-local uis = game:GetService("UserInputService")
-local ts = game:GetService("TweenService")
-local ti = TweenInfo.new(0.25, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, 0, false, 0)
-local plr = game.Players.LocalPlayer
-local char = plr.Character or plr.CharacterAdded:Wait()
-local cam = workspace.CurrentCamera
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
 
-uis.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.Keyboard then
-		if input.KeyCode == Enum.KeyCode.LeftShift then
-			ts:Create(cam, ti, {FieldOfView = 80}):Play()
-			char.Humanoid.WalkSpeed = 25
+local TweenData = TweenInfo.new(0.25, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, 0, false, 0)
+local Player = Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Camera = workspace.CurrentCamera
+
+script.Parent = Character
+
+UserInputService.InputBegan:Connect(function(Input)
+	if Input.UserInputType == Enum.UserInputType.Keyboard then
+		if Input.KeyCode == Enum.KeyCode.LeftShift then
+			TweenService:Create(Camera, TweenData, {FieldOfView = 80}):Play()
+			Character.Humanoid.WalkSpeed = 25
 		end
 	end
 end)
 
-uis.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.Keyboard then
-		if input.KeyCode == Enum.KeyCode.LeftShift then
-			ts:Create(cam, ti, {FieldOfView = 70}):Play()
-			char.Humanoid.WalkSpeed = 16
+UserInputService.InputEnded:Connect(function(Input)
+	if Input.UserInputType == Enum.UserInputType.Keyboard then
+		if Input.KeyCode == Enum.KeyCode.LeftShift then
+			TweenService:Create(Camera, TweenData, {FieldOfView = 70}):Play()
+			Character.Humanoid.WalkSpeed = 16
 		end
 	end
 end)
