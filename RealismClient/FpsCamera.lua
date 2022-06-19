@@ -159,9 +159,9 @@ end
 -- This is an overload function for TransparencyController:Update()
 -- Do not call directly, or it will throw an assertion!
 
-function FpsCamera:UpdateTransparency()
+function FpsCamera:UpdateTransparency(dt)
 	assert(self ~= FpsCamera)
-	self:BaseUpdate()
+	self:BaseUpdate(dt)
 	
 	if self.ForceRefresh then
 		self.ForceRefresh = false
