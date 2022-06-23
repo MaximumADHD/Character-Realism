@@ -137,7 +137,7 @@ function CharacterRealism:StepValue(state, delta)
 	local current = state.Current or 0
 	local goal = state.Goal
 
-	local pan = math.min(4, 4 / (delta * 10))
+	local pan = 5 / (delta * 60)
 	local rate = math.min(1, (delta * 20) / 3)
 
 	local step = math.min(rate, math.abs(goal - current) / pan)
