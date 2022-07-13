@@ -136,10 +136,10 @@ end
 function CharacterRealism:StepValue(state, delta)
 	local current = state.Current or 0
 	local goal = state.Goal
-	
+
 	local pan = 5 / (delta * 60)
 	local rate = math.min(1, (delta * 20) / 3)
-	
+
 	local step = math.min(rate, math.abs(goal - current) / pan)
 	state.Current = Util:StepTowards(current, goal, step)
 
@@ -505,6 +505,6 @@ else
 	assert(script:FindFirstAncestorOfClass("PlayerScripts"), "RealismClient must be a descendant of the PlayerScripts!")
 	assert(Players.LocalPlayer, "RealismClient expects a Player on the client to automatically start execution!")	
 	
-	-- Start automatically.
-	CharacterRealism:Start()
+	-- Start automatically. Don't start it in VR though.
+	if game.VRService.VREnabled == false then CharacterRealism:Start() end
 end
