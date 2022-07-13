@@ -159,9 +159,9 @@ end
 -- This is an overload function for TransparencyController:Update()
 -- Do not call directly, or it will throw an assertion!
 
-function FpsCamera:UpdateTransparency()
+function FpsCamera:UpdateTransparency(...)
 	assert(self ~= FpsCamera)
-	self:BaseUpdate()
+	self:BaseUpdate(...)
 	
 	if self.ForceRefresh then
 		self.ForceRefresh = false
@@ -176,9 +176,9 @@ end
 -- This is an overloaded function for TransparencyController:SetupTransparency(character)
 -- Do not call directly, or it will throw an assertion!
 
-function FpsCamera:SetupTransparency(character)
+function FpsCamera:SetupTransparency(character, ...)
 	assert(self ~= FpsCamera)
-	self:BaseSetupTransparency(character)
+	self:BaseSetupTransparency(character, ...)
 	
 	if self.AttachmentListener then
 		self.AttachmentListener:Disconnect()
@@ -186,8 +186,13 @@ function FpsCamera:SetupTransparency(character)
 	
 	self.AttachmentListener = character.DescendantAdded:Connect(function (obj)
 		if obj:IsA("Attachment") and self.HeadAttachments[obj.Name] then
-			self.cachedParts[obj.Parent] = true
-			self.transparencyDirty = true
+			if typeof(self.cachedParts) == "table" then
+				self.cachedParts[obj.Parent] = true
+			end
+
+			if self.transparencyDirty ~= nil then
+				self.transparencyDirty = true
+			end
 		end
 	end)
 end
