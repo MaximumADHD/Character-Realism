@@ -10,15 +10,14 @@ local StarterPlayer = game:GetService("StarterPlayer")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 
-local CurrentCamera	= workspace.CurrentCamera
+local CurrentCamera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 local Character	= LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 
 local ACTION_SPRINT = "Sprint"
 local Sprinting = false
-
-local StartTime = nil
+local Started = false
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Main Logic
@@ -50,23 +49,18 @@ local Sprint = {
 
 local TweenInformation = TweenInfo.new(Sprint.TweenSpeed, Sprint.TweenStyle, Sprint.TweenDirection, 0, false, 0)
 
-local SprintEvent = Instance.new("BindableEvent")
-local WalkEvent = Instance.new("BindableEvent")
-
-local started = false
-
 function Sprint:Start()
-	if started then
+	if Started then
 		return
 	else
-		started = true
+		Started = true
 	end
 	
-	SprintEvent.Event:Connect(function()
+	local function StartSprinting()
 		if Character then
 			if Humanoid then
 				Sprinting = not Sprinting
-				
+
 				if Sprinting then
 					Humanoid.WalkSpeed = Sprint.SprintingSpeed
 					TweenService:Create(CurrentCamera, TweenInformation, {FieldOfView = Sprint.SprintingFOV}):Play()
@@ -78,17 +72,17 @@ function Sprint:Start()
 				end
 			end
 		end
-	end)
+	end
 
-	ContextActionService:BindActionAtPriority(ACTION_SPRINT, function(Action, State, Input)
+	ContextActionService:BindAction(ACTION_SPRINT, function(Action, State, Input)
 		if Input.UserInputType == Enum.UserInputType.Keyboard then
-			SprintEvent:Fire()
+			StartSprinting()
 		elseif Input.UserInputType == Enum.UserInputType.Touch and State == Enum.UserInputState.Begin then
-			SprintEvent:Fire()
+			StartSprinting()
 		elseif Input.UserInputType == Enum.UserInputType.Gamepad1 and State == Enum.UserInputState.Begin then
-			SprintEvent:Fire()
+			StartSprinting()
 		end
-	end, true, 10000, unpack(Sprint.Keycodes))
+	end, true, unpack(Sprint.Keycodes))
 
 	-- Small snippet of code to unbind the action when chatting
 	game.Players.PlayerAdded:Connect(function(Player)
