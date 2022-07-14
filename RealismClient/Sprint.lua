@@ -36,7 +36,7 @@ local Sprint = {
 	
 	Keycodes = { -- The keys and buttons that can be used to start sprinting
 		--// PC
-		Enum.KeyCode.LeftShift,
+		Enum.KeyCode.R,
 		
 		--// Xbox
 		Enum.KeyCode.ButtonY
