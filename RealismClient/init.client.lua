@@ -14,6 +14,7 @@ local Debris = game:GetService("Debris")
 local Util = require(script.Util)
 local Config = require(script.Config)
 local FpsCamera = require(script.FpsCamera)
+local Sprint = require(script.Sprint)
 
 local XZ_VECTOR3 = Vector3.new(1, 0, 1)
 
@@ -495,6 +496,7 @@ function CharacterRealism:Start()
 	self:Connect("OnHumanoidAdded", CollectionService:GetInstanceAddedSignal(self.BindTag))
 	
 	FpsCamera:Start()
+	Sprint:Start()
 end
 
 if script:IsA("ModuleScript") then
@@ -503,7 +505,7 @@ if script:IsA("ModuleScript") then
 else
 	-- Sanity check
 	assert(script:FindFirstAncestorOfClass("PlayerScripts"), "RealismClient must be a descendant of the PlayerScripts!")
-	assert(Players.LocalPlayer, "RealismClient expects a Player on the client to automatically start execution!")	
+	assert(Players.LocalPlayer, "RealismClient expects a Player on the client to automatically start execution!")
 	
 	-- Start automatically.
 	CharacterRealism:Start()
