@@ -27,22 +27,22 @@ local Started = false
 local Sprint = {
 	DefaultFOV = 70; -- Normal FOV (Not sprinting)
 	DefaultSpeed = StarterPlayer.CharacterWalkSpeed; -- Normal WalkSpeed (Not sprinting)
-	
+
 	SprintingSpeed = 24; -- WalkSpeed when sprinting
 	SprintingFOV = 80; -- FOV when sprinting
-	
+
 	TweenSpeed = 0.25; -- Tweening speed (In seconds)
 	TweenStyle = Enum.EasingStyle.Sine; -- Tweening Style
 	TweenDirection = Enum.EasingDirection.InOut; -- Tweening Direction
-	
+
 	Keycodes = { -- The keys and buttons that can be used to start sprinting
 		--// PC
 		Enum.KeyCode.LeftShift,
-		
+
 		--// Xbox
 		Enum.KeyCode.ButtonY
 	};
-	
+
 	MobilePosition = UDim2.new(0.4, 0, 0.2, 0); -- Button position for mobile
 	MobileSprintTitle = "Run"; -- Normal button title (Not sprinting)
 	MobileWalkTitle = "Walk"; -- Button title when sprinting
@@ -56,7 +56,7 @@ function Sprint:Start()
 	else
 		Started = true
 	end
-	
+
 	local function StartSprinting()
 		if Character then
 			if Humanoid then
@@ -74,16 +74,13 @@ function Sprint:Start()
 			end
 		end
 	end
-	
-	RunService.RenderStepped:Connect(function()
-		ContextActionService:BindAction(ACTION_SPRINT, function(Action, State, Input)
-			StartSprinting()
-		end, true, unpack(Sprint.Keycodes))
 
+	RunService.RenderStepped:Connect(function()
+		ContextActionService:BindAction(ACTION_SPRINT, StartSprinting(), true, unpack(Sprint.Keycodes))
 		ContextActionService:SetPosition(ACTION_SPRINT, Sprint.MobilePosition)
 		ContextActionService:SetTitle(ACTION_SPRINT, Sprint.MobileSprintTitle)
 	end)
-	
+
 	-- Small snippet of code to unbind the action when chatting
 	game.Players.PlayerAdded:Connect(function(Player)
 		Player.Chatted:Connect(function(chatting)
@@ -97,3 +94,5 @@ function Sprint:Start()
 end
 
 return Sprint
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
