@@ -99,13 +99,17 @@ function Sprint:Start()
 	ContextActionService:SetPosition(ACTION_SPRINT, Sprint.MobilePosition)
 	ContextActionService:SetTitle(ACTION_SPRINT, Sprint.MobileSprintTitle)
 
-	-- Small snippet of code to unbind the action when chatting
+	-- Small snippet of code to unbind the action when chatting and dying
 	LocalPlayer.Chatted:Connect(function(Chatting)
 		if Chatting then
 			ContextActionService:UnbindAction(ACTION_SPRINT)
 		else
 			ContextActionService:BindAction(ACTION_SPRINT)
 		end
+	end)
+	
+	Humanoid.Died:Connect(function()
+		ContextActionService:UnbindAction(ACTION_SPRINT)
 	end)
 end
 
