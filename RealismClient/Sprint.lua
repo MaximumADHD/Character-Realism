@@ -77,13 +77,7 @@ function Sprint:Start()
 	
 	RunService.RenderStepped:Connect(function()
 		ContextActionService:BindAction(ACTION_SPRINT, function(Action, State, Input)
-			if Input.UserInputType == Enum.UserInputType.Keyboard then
-				StartSprinting()
-			elseif Input.UserInputType == Enum.UserInputType.Touch and State == Enum.UserInputState.Begin then
-				StartSprinting()
-			elseif Input.UserInputType == Enum.UserInputType.Gamepad1 and State == Enum.UserInputState.Begin then
-				StartSprinting()
-			end
+			StartSprinting()
 		end, true, unpack(Sprint.Keycodes))
 
 		ContextActionService:SetPosition(ACTION_SPRINT, Sprint.MobilePosition)
