@@ -86,19 +86,19 @@ function Sprint:Start()
 			end
 		end, true, unpack(Sprint.Keycodes))
 
-		-- Small snippet of code to unbind the action when chatting
-		game.Players.PlayerAdded:Connect(function(Player)
-			Player.Chatted:Connect(function(chatting)
-				if chatting then
-					ContextActionService:UnbindAction(ACTION_SPRINT)
-				else
-					ContextActionService:BindAction(ACTION_SPRINT)
-				end
-			end)
-		end)
-
 		ContextActionService:SetPosition(ACTION_SPRINT, Sprint.MobilePosition)
 		ContextActionService:SetTitle(ACTION_SPRINT, Sprint.MobileSprintTitle)
+	end)
+	
+	-- Small snippet of code to unbind the action when chatting
+	game.Players.PlayerAdded:Connect(function(Player)
+		Player.Chatted:Connect(function(chatting)
+			if chatting then
+				ContextActionService:UnbindAction(ACTION_SPRINT)
+			else
+				ContextActionService:BindAction(ACTION_SPRINT)
+			end
+		end)
 	end)
 end
 
