@@ -8,6 +8,7 @@
 local ContextActionService = game:GetService("ContextActionService")
 local StarterPlayer = game:GetService("StarterPlayer")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 
 local CurrentCamera = workspace.CurrentCamera
@@ -36,7 +37,7 @@ local Sprint = {
 	
 	Keycodes = { -- The keys and buttons that can be used to start sprinting
 		--// PC
-		Enum.KeyCode.R,
+		Enum.KeyCode.LeftShift,
 		
 		--// Xbox
 		Enum.KeyCode.ButtonY
@@ -73,30 +74,32 @@ function Sprint:Start()
 			end
 		end
 	end
-
-	ContextActionService:BindAction(ACTION_SPRINT, function(Action, State, Input)
-		if Input.UserInputType == Enum.UserInputType.Keyboard then
-			StartSprinting()
-		elseif Input.UserInputType == Enum.UserInputType.Touch and State == Enum.UserInputState.Begin then
-			StartSprinting()
-		elseif Input.UserInputType == Enum.UserInputType.Gamepad1 and State == Enum.UserInputState.Begin then
-			StartSprinting()
-		end
-	end, true, unpack(Sprint.Keycodes))
-
-	-- Small snippet of code to unbind the action when chatting
-	game.Players.PlayerAdded:Connect(function(Player)
-		Player.Chatted:Connect(function(chatting)
-			if chatting then
-				ContextActionService:UnbindAction(ACTION_SPRINT)
-			else
-				ContextActionService:BindAction(ACTION_SPRINT)
+	
+	RunService.RenderStepped:Connect(function()
+		ContextActionService:BindAction(ACTION_SPRINT, function(Action, State, Input)
+			if Input.UserInputType == Enum.UserInputType.Keyboard then
+				StartSprinting()
+			elseif Input.UserInputType == Enum.UserInputType.Touch and State == Enum.UserInputState.Begin then
+				StartSprinting()
+			elseif Input.UserInputType == Enum.UserInputType.Gamepad1 and State == Enum.UserInputState.Begin then
+				StartSprinting()
 			end
-		end)
-	end)
+		end, true, unpack(Sprint.Keycodes))
 
-	ContextActionService:SetPosition(ACTION_SPRINT, Sprint.MobilePosition)
-	ContextActionService:SetTitle(ACTION_SPRINT, Sprint.MobileSprintTitle)
+		-- Small snippet of code to unbind the action when chatting
+		game.Players.PlayerAdded:Connect(function(Player)
+			Player.Chatted:Connect(function(chatting)
+				if chatting then
+					ContextActionService:UnbindAction(ACTION_SPRINT)
+				else
+					ContextActionService:BindAction(ACTION_SPRINT)
+				end
+			end)
+		end)
+
+		ContextActionService:SetPosition(ACTION_SPRINT, Sprint.MobilePosition)
+		ContextActionService:SetTitle(ACTION_SPRINT, Sprint.MobileSprintTitle)
+	end)
 end
 
 return Sprint
