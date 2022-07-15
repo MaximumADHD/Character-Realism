@@ -16,6 +16,18 @@ local Character	= LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 
 local ACTION_SPRINT = "Sprint"
+
+local Gamepads = {
+	Enum.UserInputType.Gamepad1,
+	Enum.UserInputType.Gamepad2,
+	Enum.UserInputType.Gamepad3,
+	Enum.UserInputType.Gamepad4,
+	Enum.UserInputType.Gamepad5,
+	Enum.UserInputType.Gamepad6,
+	Enum.UserInputType.Gamepad7,
+	Enum.UserInputType.Gamepad8
+}
+
 local Sprinting = false
 local Started = false
 
@@ -73,8 +85,17 @@ function Sprint:Start()
 			end
 		end
 	end
+
+	ContextActionService:BindAction(ACTION_SPRINT, function(Action, State, Input)
+		if Input.UserInputType == Enum.UserInputType.Keyboard then
+			StartSprinting()
+		elseif Input.UserInputType == Enum.UserInputType.Touch and State == Enum.UserInputState.Begin then
+			StartSprinting()
+		elseif Input.UserInputType == Gamepads and State == Enum.UserInputState.Begin then
+			StartSprinting()
+		end
+	end, true, unpack(Sprint.Keycodes))
 	
-	ContextActionService:BindAction(ACTION_SPRINT, StartSprinting(), true, unpack(Sprint.Keycodes))
 	ContextActionService:SetPosition(ACTION_SPRINT, Sprint.MobilePosition)
 	ContextActionService:SetTitle(ACTION_SPRINT, Sprint.MobileSprintTitle)
 
