@@ -8,7 +8,6 @@
 local ContextActionService = game:GetService("ContextActionService")
 local StarterPlayer = game:GetService("StarterPlayer")
 local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 
 local CurrentCamera = workspace.CurrentCamera
@@ -74,22 +73,18 @@ function Sprint:Start()
 			end
 		end
 	end
-
-	RunService.RenderStepped:Connect(function()
-		ContextActionService:BindAction(ACTION_SPRINT, StartSprinting(), true, unpack(Sprint.Keycodes))
-		ContextActionService:SetPosition(ACTION_SPRINT, Sprint.MobilePosition)
-		ContextActionService:SetTitle(ACTION_SPRINT, Sprint.MobileSprintTitle)
-	end)
+	
+	ContextActionService:BindAction(ACTION_SPRINT, StartSprinting(), true, unpack(Sprint.Keycodes))
+	ContextActionService:SetPosition(ACTION_SPRINT, Sprint.MobilePosition)
+	ContextActionService:SetTitle(ACTION_SPRINT, Sprint.MobileSprintTitle)
 
 	-- Small snippet of code to unbind the action when chatting
-	game.Players.PlayerAdded:Connect(function(Player)
-		Player.Chatted:Connect(function(chatting)
-			if chatting then
-				ContextActionService:UnbindAction(ACTION_SPRINT)
-			else
-				ContextActionService:BindAction(ACTION_SPRINT)
-			end
-		end)
+	LocalPlayer.Chatted:Connect(function(Chatting)
+		if Chatting then
+			ContextActionService:UnbindAction(ACTION_SPRINT)
+		else
+			ContextActionService:BindAction(ACTION_SPRINT)
+		end
 	end)
 end
 
