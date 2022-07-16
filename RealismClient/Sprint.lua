@@ -61,29 +61,29 @@ local Sprint = {
 
 local TweenInformation = TweenInfo.new(Sprint.TweenSpeed, Sprint.TweenStyle, Sprint.TweenDirection, 0, false, 0)
 
+local function StartSprinting()
+	if Character then
+		if Humanoid then
+			Sprinting = not Sprinting
+			
+			if Sprinting then
+				Humanoid.WalkSpeed = Sprint.SprintingSpeed
+				TweenService:Create(CurrentCamera, TweenInformation, {FieldOfView = Sprint.SprintingFOV}):Play()
+				ContextActionService:SetTitle(ACTION_SPRINT, Sprint.MobileWalkTitle)
+			else
+				Humanoid.WalkSpeed = Sprint.DefaultSpeed
+				TweenService:Create(CurrentCamera, TweenInformation, {FieldOfView = Sprint.DefaultFOV}):Play()
+				ContextActionService:SetTitle(ACTION_SPRINT, Sprint.MobileSprintTitle)
+			end
+		end
+	end
+end
+
 function Sprint:Start()
 	if Started then
 		return
 	else
 		Started = true
-	end
-
-	local function StartSprinting()
-		if Character then
-			if Humanoid then
-				Sprinting = not Sprinting
-
-				if Sprinting then
-					Humanoid.WalkSpeed = Sprint.SprintingSpeed
-					TweenService:Create(CurrentCamera, TweenInformation, {FieldOfView = Sprint.SprintingFOV}):Play()
-					ContextActionService:SetTitle(ACTION_SPRINT, Sprint.MobileWalkTitle)
-				else
-					Humanoid.WalkSpeed = Sprint.DefaultSpeed
-					TweenService:Create(CurrentCamera, TweenInformation, {FieldOfView = Sprint.DefaultFOV}):Play()
-					ContextActionService:SetTitle(ACTION_SPRINT, Sprint.MobileSprintTitle)
-				end
-			end
-		end
 	end
 
 	ContextActionService:BindAction(ACTION_SPRINT, function(Action, State, Input)
@@ -99,17 +99,13 @@ function Sprint:Start()
 	ContextActionService:SetPosition(ACTION_SPRINT, Sprint.MobilePosition)
 	ContextActionService:SetTitle(ACTION_SPRINT, Sprint.MobileSprintTitle)
 
-	-- Small snippet of code to unbind the action when chatting and dying
+	-- Small snippet of code to unbind the action when chatting
 	LocalPlayer.Chatted:Connect(function(Chatting)
 		if Chatting then
 			ContextActionService:UnbindAction(ACTION_SPRINT)
 		else
 			ContextActionService:BindAction(ACTION_SPRINT)
 		end
-	end)
-	
-	Humanoid.Died:Connect(function()
-		ContextActionService:UnbindAction(ACTION_SPRINT)
 	end)
 end
 
