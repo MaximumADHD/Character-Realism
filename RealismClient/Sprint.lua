@@ -6,6 +6,7 @@
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local ContextActionService = game:GetService("ContextActionService")
+local UserInputService = game:GetService("UserInputService")
 local StarterPlayer = game:GetService("StarterPlayer")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
@@ -14,6 +15,8 @@ local CurrentCamera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 local Character	= LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
+
+local FREECAM_MACRO_KB = {Enum.KeyCode.LeftShift, Enum.KeyCode.P}
 
 local ACTION_SPRINT = "Sprint"
 
@@ -61,21 +64,32 @@ local Sprint = {
 
 local TweenInformation = TweenInfo.new(Sprint.TweenSpeed, Sprint.TweenStyle, Sprint.TweenDirection, 0, false, 0)
 
-local function StartSprinting()
-	if Character then
-		if Humanoid then
-			Sprinting = not Sprinting
-			
-			if Sprinting then
-				Humanoid.WalkSpeed = Sprint.SprintingSpeed
-				TweenService:Create(CurrentCamera, TweenInformation, {FieldOfView = Sprint.SprintingFOV}):Play()
-				ContextActionService:SetTitle(ACTION_SPRINT, Sprint.MobileWalkTitle)
-			else
-				Humanoid.WalkSpeed = Sprint.DefaultSpeed
-				TweenService:Create(CurrentCamera, TweenInformation, {FieldOfView = Sprint.DefaultFOV}):Play()
-				ContextActionService:SetTitle(ACTION_SPRINT, Sprint.MobileSprintTitle)
-			end
+local function CheckMacro(macro)
+	for i = 1, #macro - 1 do
+		if not UserInputService:IsKeyDown(macro[i]) then
+			return
 		end
+	end
+
+	ContextActionService:UnbindAction(ACTION_SPRINT)
+end
+
+local function StartSprinting()
+	local FOVTweenIn = TweenService:Create(CurrentCamera, TweenInformation, {FieldOfView = Sprint.SprintingFOV})
+	local FOVTweenOut = TweenService:Create(CurrentCamera, TweenInformation, {FieldOfView = Sprint.DefaultFOV})
+	
+	Sprinting = not Sprinting
+	
+	if Sprinting then
+		Humanoid.WalkSpeed = Sprint.SprintingSpeed
+		FOVTweenIn:Play()
+		
+		ContextActionService:SetTitle(ACTION_SPRINT, Sprint.MobileWalkTitle)
+	else
+		Humanoid.WalkSpeed = Sprint.DefaultSpeed
+		FOVTweenOut:Play()
+		
+		ContextActionService:SetTitle(ACTION_SPRINT, Sprint.MobileSprintTitle)
 	end
 end
 
@@ -93,6 +107,10 @@ function Sprint:Start()
 			StartSprinting()
 		elseif Input.UserInputType == Gamepads and State == Enum.UserInputState.Begin then
 			StartSprinting()
+		elseif Input.KeyCode == FREECAM_MACRO_KB[#FREECAM_MACRO_KB] then
+			CheckMacro(FREECAM_MACRO_KB)
+		elseif not Input.KeyCode == FREECAM_MACRO_KB[#FREECAM_MACRO_KB] then
+			ContextActionService:BindAction(ACTION_SPRINT)
 		end
 	end, true, unpack(Sprint.Keycodes))
 	
