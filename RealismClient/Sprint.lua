@@ -6,17 +6,12 @@
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local ContextActionService = game:GetService("ContextActionService")
-local UserInputService = game:GetService("UserInputService")
 local StarterPlayer = game:GetService("StarterPlayer")
-local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 
-local CurrentCamera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 local Character	= LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
-
-local FREECAM_MACRO_KB = {Enum.KeyCode.LeftShift, Enum.KeyCode.P}
 
 local ACTION_SPRINT = "Sprint"
 
@@ -31,7 +26,6 @@ local Gamepads = {
 	Enum.UserInputType.Gamepad8
 }
 
-local FreecamToggled = false
 local Sprinting = false
 local Started = false
 
@@ -40,15 +34,9 @@ local Started = false
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local Sprint = {
-	DefaultFOV = 70; -- Normal FOV (Not sprinting)
 	DefaultSpeed = StarterPlayer.CharacterWalkSpeed; -- Normal WalkSpeed (Not sprinting)
 
 	SprintingSpeed = 24; -- WalkSpeed when sprinting
-	SprintingFOV = 80; -- FOV when sprinting
-
-	TweenSpeed = 0.25; -- Tweening speed (In seconds)
-	TweenStyle = Enum.EasingStyle.Sine; -- Tweening Style
-	TweenDirection = Enum.EasingDirection.InOut; -- Tweening Direction
 
 	Keycodes = { -- The keys and buttons that can be used to start sprinting
 		--// PC
@@ -63,31 +51,14 @@ local Sprint = {
 	MobileWalkTitle = "Walk"; -- Button title when sprinting
 }
 
-local TweenInformation = TweenInfo.new(Sprint.TweenSpeed, Sprint.TweenStyle, Sprint.TweenDirection, 0, false, 0)
-
-local function CheckMacro(macro)
-	for i = 1, #macro - 1 do
-		if not UserInputService:IsKeyDown(macro[i]) then
-			return
-		end
-	end
-end
-
 local function StartSprinting()
-	local FOVTweenIn = TweenService:Create(CurrentCamera, TweenInformation, {FieldOfView = Sprint.SprintingFOV})
-	local FOVTweenOut = TweenService:Create(CurrentCamera, TweenInformation, {FieldOfView = Sprint.DefaultFOV})
-	
 	Sprinting = not Sprinting
 	
 	if Sprinting then
 		Humanoid.WalkSpeed = Sprint.SprintingSpeed
-		FOVTweenIn:Play()
-		
 		ContextActionService:SetTitle(ACTION_SPRINT, Sprint.MobileWalkTitle)
 	else
 		Humanoid.WalkSpeed = Sprint.DefaultSpeed
-		FOVTweenOut:Play()
-		
 		ContextActionService:SetTitle(ACTION_SPRINT, Sprint.MobileSprintTitle)
 	end
 end
@@ -106,22 +77,6 @@ function Sprint:Start()
 			StartSprinting()
 		elseif Input.UserInputType == Gamepads and State == Enum.UserInputState.Begin then
 			StartSprinting()
-		end
-		
-		if not FreecamToggled then
-			if Input.KeyCode == FREECAM_MACRO_KB[#FREECAM_MACRO_KB] then
-				CheckMacro(FREECAM_MACRO_KB)
-				ContextActionService:UnbindAction(ACTION_SPRINT)
-				CurrentCamera.FieldOfView = Sprint.DefaultFOV
-				FreecamToggled = true
-			end
-		else
-			if not Input.KeyCode == FREECAM_MACRO_KB[#FREECAM_MACRO_KB] then
-				CheckMacro(FREECAM_MACRO_KB)
-				ContextActionService:BindAction(ACTION_SPRINT)
-				CurrentCamera.FieldOfView = Sprint.DefaultFOV
-				FreecamToggled = false
-			end
 		end
 	end, true, unpack(Sprint.Keycodes))
 	
