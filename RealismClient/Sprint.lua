@@ -31,6 +31,7 @@ local Gamepads = {
 	Enum.UserInputType.Gamepad8
 }
 
+local FreecamToggled = false
 local Sprinting = false
 local Started = false
 
@@ -70,8 +71,6 @@ local function CheckMacro(macro)
 			return
 		end
 	end
-
-	ContextActionService:UnbindAction(ACTION_SPRINT)
 end
 
 local function StartSprinting()
@@ -107,10 +106,22 @@ function Sprint:Start()
 			StartSprinting()
 		elseif Input.UserInputType == Gamepads and State == Enum.UserInputState.Begin then
 			StartSprinting()
-		elseif Input.KeyCode == FREECAM_MACRO_KB[#FREECAM_MACRO_KB] then
-			CheckMacro(FREECAM_MACRO_KB)
-		elseif not Input.KeyCode == FREECAM_MACRO_KB[#FREECAM_MACRO_KB] then
-			ContextActionService:BindAction(ACTION_SPRINT)
+		end
+		
+		if not FreecamToggled then
+			if Input.KeyCode == FREECAM_MACRO_KB[#FREECAM_MACRO_KB] then
+				CheckMacro(FREECAM_MACRO_KB)
+				ContextActionService:UnbindAction(ACTION_SPRINT)
+				CurrentCamera.FieldOfView = Sprint.DefaultFOV
+				FreecamToggled = true
+			end
+		else
+			if not Input.KeyCode == FREECAM_MACRO_KB[#FREECAM_MACRO_KB] then
+				CheckMacro(FREECAM_MACRO_KB)
+				ContextActionService:BindAction(ACTION_SPRINT)
+				CurrentCamera.FieldOfView = Sprint.DefaultFOV
+				FreecamToggled = false
+			end
 		end
 	end, true, unpack(Sprint.Keycodes))
 	
