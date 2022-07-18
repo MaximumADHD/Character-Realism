@@ -7,10 +7,8 @@
 
 local ContextActionService = game:GetService("ContextActionService")
 local StarterPlayer = game:GetService("StarterPlayer")
-local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 
-local CurrentCamera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 local Character	= LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
@@ -36,15 +34,9 @@ local Started = false
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 local Sprint = {
-	DefaultFOV = 70; -- Normal FOV (Not sprinting)
 	DefaultSpeed = StarterPlayer.CharacterWalkSpeed; -- Normal WalkSpeed (Not sprinting)
 
 	SprintingSpeed = 24; -- WalkSpeed when sprinting
-	SprintingFOV = 80; -- FOV when sprinting
-
-	TweenSpeed = 0.25; -- Tweening speed (In seconds)
-	TweenStyle = Enum.EasingStyle.Sine; -- Tweening Style
-	TweenDirection = Enum.EasingDirection.InOut; -- Tweening Direction
 
 	Keycodes = { -- The keys and buttons that can be used to start sprinting
 		--// PC
@@ -59,18 +51,14 @@ local Sprint = {
 	MobileWalkTitle = "Walk"; -- Button title when sprinting
 }
 
-local TweenInformation = TweenInfo.new(Sprint.TweenSpeed, Sprint.TweenStyle, Sprint.TweenDirection, 0, false, 0)
-
 local function StartSprinting()
 	Sprinting = not Sprinting
 	
 	if Sprinting then
 		Humanoid.WalkSpeed = Sprint.SprintingSpeed
-		TweenService:Create(CurrentCamera, TweenInformation, {FieldOfView = Sprint.SprintingFOV}):Play()
 		ContextActionService:SetTitle(ACTION_SPRINT, Sprint.MobileWalkTitle)
 	else
 		Humanoid.WalkSpeed = Sprint.DefaultSpeed
-		TweenService:Create(CurrentCamera, TweenInformation, {FieldOfView = Sprint.DefaultFOV}):Play()
 		ContextActionService:SetTitle(ACTION_SPRINT, Sprint.MobileSprintTitle)
 	end
 end
