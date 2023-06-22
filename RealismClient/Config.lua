@@ -32,32 +32,40 @@ local REALISM_CONFIG =
 	
 	MaterialMap = 
 	{
-		Mud    = "Dirt";
-		Pebble = "Dirt";
-		Ground = "Dirt";
-		
-		Sand      = "Sand";
-		Snow      = "Sand";
-		Sandstone = "Sand";
-		
-		Rock    = "Gravel";
-		Basalt  = "Gravel";
-		Asphalt = "Gravel";
-		Glacier = "Gravel";
-		Slate   = "Gravel";
-		
-		WoodPlanks = "Wood";
-		LeafyGrass = "Grass";
-		
-		Ice       = "Marble";
-		Salt      = "Marble";
-		Marble    = "Marble";
-		Pavement  = "Marble";
-		Limestone = "Marble";
-		
-		Foil          = "Metal";
-		DiamondPlate  = "Metal";
-		CorrodedMetal = "Metal";
+		Mud           = "Dirt",
+		Pebble        = "Dirt",
+		Ground        = "Dirt",
+
+		Snow          = "Sand",
+		Sandstone     = "Sand",
+
+		Rock          = "Gravel",
+		Basalt        = "Gravel",
+		Asphalt       = "Gravel",
+		Glacier       = "Gravel",
+		Slate         = "Gravel",
+		CrackedLava   = "Gravel",
+
+		WoodPlanks    = "Wood",
+		LeafyGrass    = "Grass",
+
+		Brick         = "Concrete",
+		Plastic       = "Concrete",
+		Cobblestone   = "Concrete",
+		SmoothPlastic = "Concrete",
+
+		Ice           = "Marble",
+		Salt          = "Marble",
+		Granite       = "Marble",
+		Pavement      = "Marble",
+		Limestone     = "Marble",
+
+		Neon          = "Metal",
+		Foil          = "Metal",
+		Glass         = "Metal",
+		ForceField    = "Metal",
+		DiamondPlate  = "Metal",
+		CorrodedMetal = "Metal",
 	};
 	
 	---------------------------------------------
