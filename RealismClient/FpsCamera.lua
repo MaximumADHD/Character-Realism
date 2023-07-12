@@ -40,7 +40,7 @@ local FpsCamera =
 -- in context of the FpsCamera.
 
 function FpsCamera:Warn(...)
-	warn("[FpsCamera]", ...)
+	warn("[FpsCamera] ", ...)
 end
 
 -- Connects a self-function by  
