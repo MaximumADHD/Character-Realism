@@ -5,13 +5,11 @@
     {
         "$className": "Folder",
 
-        "RealismClient":
-        {
+        "RealismClient": {
             "$path": "RealismClient"
         },
 
-        "RealismServer":
-        {
+        "RealismServer": {
             "$path": "Realism.server.lua"
         }
     }

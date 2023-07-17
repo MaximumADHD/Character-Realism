@@ -1,78 +1,143 @@
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- CloneTrooper1019, 2020 
+-- MaximumADHD, 2020
 -- Realism Client
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Dependencies
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--!strict
 
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
-local Debris = game:GetService("Debris")
 
-local Util = require(script.Util)
-local Config = require(script.Config)
-local FpsCamera = require(script.FpsCamera)
-
+local player = assert(Players.LocalPlayer)
+local FirstPerson = require(script.FirstPerson)
 local XZ_VECTOR3 = Vector3.new(1, 0, 1)
+
+local Config = require(script.Config) :: {
+	Sounds: {
+		[string]: number,
+	},
+
+	MaterialMap: {
+		[string]: string,
+	},
+
+	RotationFactors: {
+		[string]: {
+			Pitch: number,
+			Yaw: number,
+		},
+	},
+
+	SkipLookAngle: boolean?,
+	SkipMaterialSounds: boolean?,
+}
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Main Logic
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-local CharacterRealism = 
-{
-	Rotators = {};
-	BindTag = "RealismHook";
-	
-	Player = Players.LocalPlayer;
-	SetLookAngles = ReplicatedStorage:WaitForChild("SetLookAngles");
+local setLookAngles = ReplicatedStorage:WaitForChild("SetLookAngles")
+assert(setLookAngles:IsA("RemoteEvent"), "bad SetLookAngles")
+
+local module = {
+	Started = false,
+
+	Rotators = {} :: {
+		[Model]: JointRotator,
+	},
+
+	DropQueue = {} :: {
+		[Model]: true,
+	},
+
+	LastUpdate = 0,
+	Pitch = 0 / 0,
+	Yaw = 0 / 0,
 }
 
--- Connects a self-function by  
--- name to the provided event.
+type AngleState = {
+	Value: number?,
+	Current: number,
+	Goal: number,
+}
 
-function CharacterRealism:Connect(funcName, event)
-	return event:Connect(function (...)
-		self[funcName](self, ...)
-	end)
+type MotorState = {
+	Motor: Motor6D,
+	LastTransform: CFrame?,
+}
+
+type JointRotator = {
+	LastStep: number?,
+	Pitch: AngleState,
+	Yaw: AngleState,
+
+	Motors: {
+		[string]: MotorState,
+	},
+
+	-- TODO: Replace with maid
+	Listener: RBXScriptConnection?,
+}
+
+local function round(n: number, factor: number?): number
+	local mult = 10 ^ (factor or 0)
+	return math.floor((n * mult) + 0.5) / mult
 end
 
--- Register's a newly added Motor6D  
+local function roundNearestInterval(n: number, factor: number): number
+	return round(n / factor) * factor
+end
+
+local function stepTowards(value: number, goal: number, rate: number): number
+	local result = value
+
+	if math.abs(value - goal) < rate then
+		result = goal
+	elseif value > goal then
+		result = value - rate
+	elseif value < goal then
+		result = value + rate
+	end
+
+	return result
+end
+
+local function awaitValue<T, Args...>(object: any, prop: string, andThen: (T, Args...) -> (), ...: Args...): thread
+	return task.spawn(function(...)
+		local timeOut = os.clock() + 10
+
+		while not object[prop] do
+			local now = os.clock()
+
+			if (timeOut - now) < 0 then
+				return
+			end
+
+			RunService.Heartbeat:Wait()
+		end
+
+		andThen(object[prop], ...)
+	end, ...)
+end
+
+-- Register's a newly added Motor6D
 -- into the provided joint rotator.
 
-function CharacterRealism:AddMotor(rotator, motor)
-	local parent = motor.Parent
-	
-	if parent and parent.Name == "Head" then
-		parent.CanCollide = false
-	end
-	
+local function addMotor(rotator, motor: Motor6D)
 	-- Wait until this motor is marked as active
 	-- before attempting to use it in the rotator.
-	
-	Util:PromiseValue(motor, "Active", function ()
-		local data = 
-		{ 
-			Motor = motor;
-			C0 = motor.C0;
+
+	awaitValue(motor, "Active", function()
+		local part1 = assert(motor.Part1)
+
+		local data: MotorState = {
+			Motor = motor,
 		}
-		
-		-- If it can be found, use the source RigAttachment for this Motor6D
-		-- joint instead of using the static C0 value. This is intended for R15.
-		
-		Util:PromiseChild(motor.Part0, motor.Name .. "RigAttachment", function (origin)
-			if origin:IsA("Attachment") then
-				data.Origin = origin
-				data.C0 = nil
-			end
-		end)
-			
-		-- Add this motor to the rotator
-		-- by the name of its Part1 value.
-		
-		local id = motor.Part1.Name
+
+		local id = part1.Name
 		rotator.Motors[id] = data
 	end)
 end
@@ -81,10 +146,10 @@ end
 -- value from the server. This is also called continuously
 -- on the client to update the player's view with no latency.
 
-function CharacterRealism:OnLookReceive(player, pitch, yaw)
+local function onLookReceive(player: Player, pitch: number, yaw: number)
 	local character = player.Character
-	local rotator = self.Rotators[character]
-	
+	local rotator = character and module.Rotators[character]
+
 	if rotator then
 		rotator.Pitch.Goal = pitch
 		rotator.Yaw.Goal = yaw
@@ -95,53 +160,55 @@ end
 -- If no lookVector is provided, the camera's lookVector is used instead.
 -- useDir (-1 or 1) can be given to force whether the direction is flipped or not.
 
-function CharacterRealism:ComputeLookAngle(lookVector, useDir)
-	local inFirstPerson = FpsCamera:IsInFirstPerson()
+local function computeLookAngle(lookVector: Vector3?, useDir: number?)
+	local inFirstPerson = FirstPerson.IsInFirstPerson()
 	local pitch, yaw, dir = 0, 0, 1
-	
+
 	if not lookVector then
 		local camera = workspace.CurrentCamera
 		lookVector = camera.CFrame.LookVector
 	end
-	
+
+	assert(lookVector)
+
 	if lookVector then
-		local character = self.Player.Character
+		local character = player.Character
 		local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-		
+
 		if rootPart and rootPart:IsA("BasePart") then
 			local cf = rootPart.CFrame
 			pitch = -cf.RightVector:Dot(lookVector)
-			
+
 			if not inFirstPerson then
 				dir = math.clamp(cf.LookVector:Dot(lookVector) * 10, -1, 1)
 			end
 		end
-		
+
 		yaw = lookVector.Y
 	end
-	
+
 	if useDir then
 		dir = useDir
 	end
-	
+
 	pitch *= dir
 	yaw *= dir
-	
+
 	return pitch, yaw
 end
 
 -- Interpolates the current value of a rotator
 -- state (pitch/yaw) towards its goal value.
 
-function CharacterRealism:StepValue(state, delta)
+local function stepValue(state: AngleState, dt: number)
 	local current = state.Current or 0
 	local goal = state.Goal
 
-	local pan = 5 / (delta * 60)
-	local rate = math.min(1, (delta * 20) / 3)
+	local pan = 5 / (dt * 60)
+	local rate = math.min(1, (dt * 20) / 3)
 
 	local step = math.min(rate, math.abs(goal - current) / pan)
-	state.Current = Util:StepTowards(current, goal, step)
+	state.Current = stepTowards(current, goal, step)
 
 	return state.Current
 end
@@ -150,60 +217,52 @@ end
 -- on the client, as well as our own client look-angles.
 -- This is called during every RunService Heartbeat.
 
-function CharacterRealism:UpdateLookAngles(delta)
+local function updateLookAngles(dt: number)
 	-- Update our own look-angles with no latency
-	local pitch, yaw = self:ComputeLookAngle()
-	self:OnLookReceive(self.Player, pitch, yaw)
-	
+	local pitch, yaw = computeLookAngle()
+	onLookReceive(player, pitch, yaw)
+
 	-- Submit our look-angles if they have changed enough.
-	local lastUpdate = self.LastUpdate or 0
 	local now = os.clock()
-	
-	if (now - lastUpdate) > .5 then
-		pitch = Util:RoundNearestInterval(pitch, .05)
-		yaw = Util:RoundNearestInterval(yaw, .05)
 
-		if pitch ~= self.Pitch then
-			self.Pitch = pitch
-			self.Dirty = true
+	if (now - module.LastUpdate) > 0.05 then
+		local dirty = false
+		yaw = roundNearestInterval(yaw, 0.01)
+		pitch = roundNearestInterval(pitch, 0.01)
+
+		if pitch ~= module.Pitch then
+			module.Pitch = pitch
+			dirty = true
 		end
 
-		if yaw ~= self.Yaw then
-			self.Yaw = yaw
-			self.Dirty = true
+		if yaw ~= module.Yaw then
+			module.Yaw = yaw
+			dirty = true
 		end
-		
-		if self.Dirty then
-			self.Dirty = false
-			self.LastUpdate = now
-			self.SetLookAngles:FireServer(pitch, yaw)	
+
+		if dirty then
+			module.LastUpdate = now
+			setLookAngles:FireServer(pitch, yaw)
 		end
 	end
-	
+
 	-- Update all of the character look-angles
 	local camera = workspace.CurrentCamera
 	local camPos = camera.CFrame.Position
-	
-	local player = self.Player
-	local dropList
-	
-	for character, rotator in pairs(self.Rotators) do
+
+	for character, rotator in module.Rotators do
 		if not character.Parent then
-			if not dropList then
-				dropList = {}
-			end
-			
-			dropList[character] = true
+			module.DropQueue[character] = true
 			continue
 		end
-		
+
 		local owner = Players:GetPlayerFromCharacter(character)
 		local dist = owner and owner:DistanceFromCharacter(camPos) or 0
 
 		if owner ~= player and dist > 30 then
 			continue
 		end
-		
+
 		local lastStep = rotator.LastStep or 0
 		local stepDelta = now - lastStep
 
@@ -213,73 +272,47 @@ function CharacterRealism:UpdateLookAngles(delta)
 		if not rootPart then
 			continue
 		end
-		
+
+		local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
+		local numTracks = animator and #animator:GetPlayingAnimationTracks() or 0
+
 		local pitchState = rotator.Pitch
-		self:StepValue(pitchState, stepDelta)
+		stepValue(pitchState, stepDelta)
 
 		local yawState = rotator.Yaw
-		self:StepValue(yawState, stepDelta)
-		
+		stepValue(yawState, stepDelta)
+
 		local motors = rotator.Motors
 		rotator.LastStep = now
-		
+
 		if not motors then
 			continue
 		end
-		
-		for name, factors in pairs(self.RotationFactors) do
+
+		for name, factors in Config.RotationFactors do
 			local data = motors and motors[name]
+			local motor = data and data.Motor
 
-			if not data then
+			if not motor then
 				continue
 			end
 
-			local motor = data.Motor
-			local origin = data.Origin
-			
-			if origin then
-				local part0 = motor.Part0
-				local setPart0 = origin.Parent
-				
-				if part0 and part0 ~= setPart0 then
-					local newOrigin = part0:FindFirstChild(origin.Name)
+			local myPitch = pitchState.Current or 0
+			local myYaw = yawState.Current or 0
 
-					if newOrigin and newOrigin:IsA("Attachment") then
-						origin = newOrigin
-						data.Origin = newOrigin
-					end
-				end
-				
-				origin = origin.CFrame
-			elseif data.C0 then
-				origin = data.C0
-			else
-				continue
-			end
-
-			local pitch = pitchState.Current or 0
-			local yaw = yawState.Current or 0
-
-			if rotator.SnapFirstPerson and name == "Head" then
-				if FpsCamera:IsInFirstPerson() then
-					pitch = pitchState.Goal
-					yaw = yawState.Goal
-				end
-			end
-
-			local fPitch = pitch * factors.Pitch
-			local fYaw = yaw * factors.Yaw
+			local fPitch = myPitch * factors.Pitch
+			local fYaw = myYaw * factors.Yaw
 
 			-- HACK: Make the arms rotate with a tool.
 			if name:sub(-4) == " Arm" or name:sub(-8) == "UpperArm" then
 				local tool = character:FindFirstChildOfClass("Tool")
-				
-				if tool and not CollectionService:HasTag(tool, "NoArmRotation") then
-					if name:sub(1, 5) == "Right" and rootPart:GetRootPart() ~= rootPart then
+
+				if tool and not tool:HasTag("NoArmRotation") then
+					if rootPart and name:sub(1, 5) == "Right" and rootPart.AssemblyRootPart ~= rootPart then
 						fPitch = pitch * 1.3
 						fYaw = yaw * 1.3
 					else
-						fYaw = yaw * .8
+						fYaw = yaw * 0.8
 					end
 				end
 			end
@@ -297,31 +330,34 @@ function CharacterRealism:UpdateLookAngles(delta)
 			end
 
 			if dirty then
-				local rot = origin - origin.Position
-				
+				-- stylua: ignore
 				local cf = CFrame.Angles(0, fPitch, 0)
 				         * CFrame.Angles(fYaw, 0, 0)
-				
-				motor.C0 = origin * rot:Inverse() * cf * rot
+
+				-- TODO: What's the correct way to handle this?
+				if numTracks > 0 then
+					motor.Transform *= cf
+				else
+					motor.Transform = cf
+				end
 			end
 		end
 	end
-	
-	-- If the dropList is declared, remove any characters that 
-	-- were indexed into it. This is done after iterating over
-	-- the rotators to avoid problems with removing data from
-	-- a table while iterating over said table.
-	
-	if dropList then
-		for character in pairs(dropList) do
-			local rotator = self.Rotators[character]
+
+	while true do
+		local character = next(module.DropQueue)
+
+		if character then
+			local rotator = module.Rotators[character]
 			local listener = rotator and rotator.Listener
-			
+
 			if listener then
 				listener:Disconnect()
 			end
-			
-			self.Rotators[character] = nil
+
+			module.Rotators[character] = nil
+		else
+			break
 		end
 	end
 end
@@ -330,181 +366,159 @@ end
 -- update system, binding all of its current and
 -- future Motor6D joints into the rotator.
 
-function CharacterRealism:MountLookAngle(humanoid)	
+function module.MountLookAngle(humanoid: Humanoid)
 	local character = humanoid.Parent
-	local rotator = character and self.Rotators[character]
-	
-	if not rotator then
-		-- Create a rotator for this character.
-		rotator = 
-		{
-			Motors = {};
-			
-			Pitch =
-			{
-				Goal = 0;
-				Current = 0;
-			};
+	assert(character and character:IsA("Model"), "Invalid parent for Humanoid!")
 
-			Yaw =
-			{
-				Goal = 0;
-				Current = 0;
-			};
+	if module.Rotators[character] == nil then
+		-- Create a rotator for this character.
+		local rotator: JointRotator = {
+			Motors = {},
+
+			Pitch = {
+				Goal = 0,
+				Current = 0,
+			},
+
+			Yaw = {
+				Goal = 0,
+				Current = 0,
+			},
 		}
-		
-		-- If this is our character, the rotation 
-		-- values should not be interpolated while 
-		-- the client is in first person.
-		
-		local player = Players:GetPlayerFromCharacter(character)
-		
-		if player == self.Player then
-			rotator.SnapFirstPerson = true
-		end
-		
+
 		-- Register this rotator for the character.
-		self.Rotators[character] = rotator
-		
+		module.Rotators[character] = rotator
+
 		-- Record all existing Motor6D joints
 		-- and begin recording newly added ones.
-		
-		local function onDescendantAdded(desc)
+
+		local function onDescendantAdded(desc: Instance)
 			if desc:IsA("Motor6D") then
-				self:AddMotor(rotator, desc)
+				addMotor(rotator, desc)
 			end
 		end
-		
-		for _,desc in pairs(character:GetDescendants()) do
+
+		for _, desc in pairs(character:GetDescendants()) do
 			onDescendantAdded(desc)
 		end
-		
+
 		rotator.Listener = character.DescendantAdded:Connect(onDescendantAdded)
 	end
-	
-	return rotator
+
+	return module.Rotators[character]
 end
 
--- Mounts the custom material walking sounds into the provided
--- humanoid. This mounting assumes the HumanoidRootPart is the
--- part that will be storing the character's "Running" sound.
+-- Mounts the custom material walking
+-- sounds into the provided humanoid.
 
-function CharacterRealism:MountMaterialSounds(humanoid)
-	local character = humanoid.Parent
-	local rootPart = character and character:WaitForChild("HumanoidRootPart", 10)
-	
-	if not (rootPart and rootPart:IsA("BasePart")) then
+function module.MountMaterialSounds(humanoid: Instance)
+	if not humanoid:IsA("Humanoid") then
 		return
 	end
-	
-	Util:PromiseChild(rootPart, "Running", function (running)
-		if not running:IsA("Sound") then
+
+	local character = assert(humanoid.Parent)
+	local running: Sound?
+
+	local function updateRunningSoundId()
+		local soundId = Config.Sounds.Concrete
+		local material = humanoid.FloorMaterial.Name
+
+		if not Config.Sounds[material] then
+			material = Config.MaterialMap[material]
+		end
+
+		if Config.Sounds[material] then
+			soundId = Config.Sounds[material]
+		end
+
+		if running then
+			running.SoundId = `rbxassetid://{soundId or 0}`
+		end
+	end
+
+	local function onDescendantAdded(desc: Instance)
+		if desc:IsA("Sound") and desc.Name == "Running" then
+			running = desc
+			updateRunningSoundId()
+		end
+	end
+
+	local function onStateChanged(_: any, new: Enum.HumanoidStateType)
+		if not new.Name:find("Running") then
 			return
 		end
-		
-		local oldPitch = Instance.new("NumberValue")
-		oldPitch.Name = "OldPitch"
-		oldPitch.Parent = running
-		oldPitch.Value = 1
-		
-		local function onStateChanged(old, new)			
-			if new.Name:find("Running") then
-				while humanoid:GetState() == new do
-					local hipHeight = humanoid.HipHeight
-					
-					if humanoid.RigType.Name == "R6" then
-						hipHeight = 2.8
-					end
-					
-					local scale = hipHeight / 3
-					local speed = (rootPart.Velocity * XZ_VECTOR3).Magnitude
-					
-					local volume = ((speed - 4) / 12) * scale
-					running.Volume = math.clamp(volume, 0, 1)
-					
-					local pitch = oldPitch.Value / ((scale * 15) / speed)
-					running.Pitch = pitch
-					
-					RunService.Heartbeat:Wait()
-				end	
+
+		while humanoid:GetState() == new do
+			local hipHeight = humanoid.HipHeight
+			local rootPart = humanoid.RootPart
+
+			if rootPart and running then
+				if humanoid.RigType.Name == "R6" then
+					hipHeight = 2.8
+				end
+
+				local scale = hipHeight / 3
+				local speed = (rootPart.AssemblyLinearVelocity * XZ_VECTOR3).Magnitude
+
+				local volume = ((speed - 4) / 12) * scale
+				running.Volume = math.clamp(volume, 0, 1)
+				running.PlaybackSpeed = 1 / ((scale * 15) / speed)
 			end
+
+			RunService.Heartbeat:Wait()
 		end
-		
-		local function updateRunningSoundId()
-			local soundId = self.Sounds.Concrete
-			local material = humanoid.FloorMaterial.Name
-			
-			if not self.Sounds[material] then
-				material = self.MaterialMap[material]
-			end
-			
-			if self.Sounds[material] then
-				soundId = self.Sounds[material]
-			end
-			
-			running.SoundId = "rbxassetid://" .. soundId
-		end
-		
-		local floorListener = humanoid:GetPropertyChangedSignal("FloorMaterial")
-		floorListener:Connect(updateRunningSoundId)
-		
-		running.EmitterSize = 1
-		running.MaxDistance = 50
-		
-		updateRunningSoundId()
-		humanoid.StateChanged:Connect(onStateChanged)
-		
-		onStateChanged(nil, Enum.HumanoidStateType.Running)
-	end)
+	end
+
+	-- TODO: Tie these to a maid!
+	local floorChanged = humanoid:GetPropertyChangedSignal("FloorMaterial")
+	task.spawn(onStateChanged, nil, humanoid:GetState())
+
+	character.DescendantAdded:Connect(onDescendantAdded)
+	humanoid.StateChanged:Connect(onStateChanged)
+	floorChanged:Connect(updateRunningSoundId)
 end
 
--- Called when the RealismHook tag is added to a 
+-- Called when the RealismHook tag is added to a
 -- humanoid in the DataModel. Mounts the look-angle
 -- and material walking sounds into this humanoid.
- 
-function CharacterRealism:OnHumanoidAdded(humanoid)
+
+local function onHumanoidAdded(humanoid: Instance)
 	if humanoid:IsA("Humanoid") then
-		if not self.SkipLookAngle then
-			self:MountLookAngle(humanoid)
+		if not Config.SkipLookAngle then
+			task.spawn(module.MountLookAngle, humanoid)
 		end
-		
-		if not self.SkipMaterialSounds then
-			self:MountMaterialSounds(humanoid)
+
+		if not Config.SkipMaterialSounds then
+			task.spawn(module.MountMaterialSounds, humanoid)
 		end
 	end
 end
 
--- Called once when the realism client is starting.
--- This is intended for compatibility with AeroGameFramework modules,
--- but the function will automatically be called if executed from a LocalScript.
+-- Call this once when the
+-- realism client is starting.
 
-function CharacterRealism:Start()
-	assert(not _G.DefineRealismClient, "Realism can only be started once on the client!")
-	_G.DefineRealismClient = true
-	
-	for key, value in pairs(Config) do
-		self[key] = value
+function module.Start()
+	if module.Started then
+		return
 	end
-	
-	for _,humanoid in pairs(CollectionService:GetTagged(self.BindTag)) do
-		self:OnHumanoidAdded(humanoid)
+
+	local humanoidAdded = CollectionService:GetInstanceAddedSignal("RealismHook")
+	module.Started = true
+
+	for _, humanoid in CollectionService:GetTagged("RealismHook") do
+		task.spawn(onHumanoidAdded, humanoid)
 	end
-	
-	self:Connect("UpdateLookAngles", RunService.Heartbeat)
-	self:Connect("OnLookReceive", self.SetLookAngles.OnClientEvent)
-	self:Connect("OnHumanoidAdded", CollectionService:GetInstanceAddedSignal(self.BindTag))
-	
-	FpsCamera:Start()
+
+	-- TODO: Tie these to a maid!
+	task.spawn(FirstPerson.Start)
+	humanoidAdded:Connect(onHumanoidAdded)
+	RunService.Stepped:Connect(updateLookAngles)
+	setLookAngles.OnClientEvent:Connect(onLookReceive)
 end
 
-if script:IsA("ModuleScript") then
-	-- Return the system as a module table.
-	return CharacterRealism
-else
-	-- Sanity check
-	assert(script:FindFirstAncestorOfClass("PlayerScripts"), "RealismClient must be a descendant of the PlayerScripts!")
-	assert(Players.LocalPlayer, "RealismClient expects a Player on the client to automatically start execution!")	
-	
-	-- Start automatically.
-	CharacterRealism:Start()
+if not script:IsA("ModuleScript") then
+	assert(Players.LocalPlayer, "RealismClient expects a Player on the client to automatically start!")
+	task.spawn(module.Start)
 end
+
+return module
