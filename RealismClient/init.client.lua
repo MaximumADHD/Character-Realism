@@ -49,11 +49,9 @@ local module = {
 		[Model]: JointRotator,
 	},
 
-	DropQueue = {} :: {
-		[Model]: true,
-	},
-
+	DropQueue = {} :: { Model },
 	LastUpdate = 0,
+
 	Pitch = 0 / 0,
 	Yaw = 0 / 0,
 }
@@ -169,8 +167,6 @@ local function computeLookAngle(lookVector: Vector3?, useDir: number?)
 		lookVector = camera.CFrame.LookVector
 	end
 
-	assert(lookVector)
-
 	if lookVector then
 		local character = player.Character
 		local rootPart = character and character:FindFirstChild("HumanoidRootPart")
@@ -252,7 +248,7 @@ local function updateLookAngles(dt: number)
 
 	for character, rotator in module.Rotators do
 		if not character.Parent then
-			module.DropQueue[character] = true
+			table.insert(module.DropQueue, character)
 			continue
 		end
 
@@ -345,7 +341,7 @@ local function updateLookAngles(dt: number)
 	end
 
 	while true do
-		local character = next(module.DropQueue)
+		local character = table.remove(module.DropQueue)
 
 		if character then
 			local rotator = module.Rotators[character]
