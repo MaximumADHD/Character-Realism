@@ -63,7 +63,7 @@ type AngleState = {
 }
 
 type MotorState = {
-	Motor: Motor6D,
+	Motor: Motor6D | AnimationConstraint,
 	LastTransform: CFrame?,
 }
 
@@ -124,12 +124,12 @@ end
 -- Register's a newly added Motor6D
 -- into the provided joint rotator.
 
-local function addMotor(rotator, motor: Motor6D)
+local function addMotor(rotator, motor: Motor6D | AnimationConstraint)
 	-- Wait until this motor is marked as active
 	-- before attempting to use it in the rotator.
 
 	awaitValue(motor, "Active", function()
-		local part1 = assert(motor.Part1)
+		local part1 = assert(motor:IsA("AnimationConstraint") and motor.Attachment1.Parent or motor.Part1)
 
 		local data: MotorState = {
 			Motor = motor,
@@ -328,7 +328,7 @@ local function updateLookAngles(dt: number)
 			if dirty then
 				-- stylua: ignore
 				local cf = CFrame.Angles(0, fPitch, 0)
-				         * CFrame.Angles(fYaw, 0, 0)
+					* CFrame.Angles(fYaw, 0, 0)
 
 				-- TODO: What's the correct way to handle this?
 				if numTracks > 0 then
@@ -389,7 +389,7 @@ function module.MountLookAngle(humanoid: Humanoid)
 		-- and begin recording newly added ones.
 
 		local function onDescendantAdded(desc: Instance)
-			if desc:IsA("Motor6D") then
+			if desc:IsA("Motor6D") or desc:IsA("AnimationConstraint") then
 				addMotor(rotator, desc)
 			end
 		end
