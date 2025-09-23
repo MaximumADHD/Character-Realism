@@ -129,7 +129,11 @@ local function addMotor(rotator, motor: Motor6D | AnimationConstraint)
 	-- before attempting to use it in the rotator.
 
 	awaitValue(motor, "Active", function()
-		local part1 = assert(motor:IsA("AnimationConstraint") and motor.Attachment1.Parent or motor.Part1)
+		local part1 = assert(motor:IsA("AnimationConstraint") and motor.Attachment1 or motor.Part1)
+		
+		if part1:IsA("Attachment") then
+			part1 = part1.Parent ~= nil and part1.Parent or part1
+		end
 
 		local data: MotorState = {
 			Motor = motor,
@@ -163,7 +167,7 @@ local function computeLookAngle(lookVector: Vector3?, useDir: number?)
 	local pitch, yaw, dir = 0, 0, 1
 
 	if not lookVector then
-		local camera = workspace.CurrentCamera
+		local camera = workspace.CurrentCamera :: Camera
 		lookVector = camera.CFrame.LookVector
 	end
 
@@ -243,7 +247,7 @@ local function updateLookAngles(dt: number)
 	end
 
 	-- Update all of the character look-angles
-	local camera = workspace.CurrentCamera
+	local camera = workspace.CurrentCamera :: Camera
 	local camPos = camera.CFrame.Position
 
 	for character, rotator in module.Rotators do
@@ -448,7 +452,7 @@ function module.MountMaterialSounds(humanoid: Instance)
 			local hipHeight = humanoid.HipHeight
 			local rootPart = humanoid.RootPart
 
-			if rootPart and running then
+			if rootPart then
 				if humanoid.RigType.Name == "R6" then
 					hipHeight = 2.8
 				end
@@ -457,8 +461,10 @@ function module.MountMaterialSounds(humanoid: Instance)
 				local speed = (rootPart.AssemblyLinearVelocity * XZ_VECTOR3).Magnitude
 
 				local volume = ((speed - 4) / 12) * scale
-				running.Volume = math.clamp(volume, 0, 1)
-				running.PlaybackSpeed = 1 / ((scale * 15) / speed)
+				if running then
+					running.Volume = math.clamp(volume, 0, 1)
+					running.PlaybackSpeed = 1 / ((scale * 15) / speed)
+				end
 			end
 
 			RunService.Heartbeat:Wait()
