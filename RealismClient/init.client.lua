@@ -63,7 +63,7 @@ type AngleState = {
 }
 
 type MotorState = {
-	Motor: Motor6D,
+	Motor: Motor6D | AnimationConstraint,
 	LastTransform: CFrame?,
 }
 
@@ -124,12 +124,16 @@ end
 -- Register's a newly added Motor6D
 -- into the provided joint rotator.
 
-local function addMotor(rotator, motor: Motor6D)
+local function addMotor(rotator, motor: Motor6D | AnimationConstraint)
 	-- Wait until this motor is marked as active
 	-- before attempting to use it in the rotator.
 
 	awaitValue(motor, "Active", function()
-		local part1 = assert(motor.Part1)
+		local part1 = assert(motor:IsA("AnimationConstraint") and motor.Attachment1 or motor.Part1)
+		
+		if part1:IsA("Attachment") then
+			part1 = part1.Parent ~= nil and part1.Parent or part1
+		end
 
 		local data: MotorState = {
 			Motor = motor,
@@ -163,7 +167,7 @@ local function computeLookAngle(lookVector: Vector3?, useDir: number?)
 	local pitch, yaw, dir = 0, 0, 1
 
 	if not lookVector then
-		local camera = workspace.CurrentCamera
+		local camera = workspace.CurrentCamera :: Camera
 		lookVector = camera.CFrame.LookVector
 	end
 
@@ -243,7 +247,7 @@ local function updateLookAngles(dt: number)
 	end
 
 	-- Update all of the character look-angles
-	local camera = workspace.CurrentCamera
+	local camera = workspace.CurrentCamera :: Camera
 	local camPos = camera.CFrame.Position
 
 	for character, rotator in module.Rotators do
@@ -328,7 +332,7 @@ local function updateLookAngles(dt: number)
 			if dirty then
 				-- stylua: ignore
 				local cf = CFrame.Angles(0, fPitch, 0)
-				         * CFrame.Angles(fYaw, 0, 0)
+					* CFrame.Angles(fYaw, 0, 0)
 
 				-- TODO: What's the correct way to handle this?
 				if numTracks > 0 then
@@ -389,7 +393,7 @@ function module.MountLookAngle(humanoid: Humanoid)
 		-- and begin recording newly added ones.
 
 		local function onDescendantAdded(desc: Instance)
-			if desc:IsA("Motor6D") then
+			if desc:IsA("Motor6D") or desc:IsA("AnimationConstraint") then
 				addMotor(rotator, desc)
 			end
 		end
@@ -448,7 +452,7 @@ function module.MountMaterialSounds(humanoid: Instance)
 			local hipHeight = humanoid.HipHeight
 			local rootPart = humanoid.RootPart
 
-			if rootPart and running then
+			if rootPart then
 				if humanoid.RigType.Name == "R6" then
 					hipHeight = 2.8
 				end
@@ -457,8 +461,10 @@ function module.MountMaterialSounds(humanoid: Instance)
 				local speed = (rootPart.AssemblyLinearVelocity * XZ_VECTOR3).Magnitude
 
 				local volume = ((speed - 4) / 12) * scale
-				running.Volume = math.clamp(volume, 0, 1)
-				running.PlaybackSpeed = 1 / ((scale * 15) / speed)
+				if running then
+					running.Volume = math.clamp(volume, 0, 1)
+					running.PlaybackSpeed = 1 / ((scale * 15) / speed)
+				end
 			end
 
 			RunService.Heartbeat:Wait()
