@@ -329,6 +329,11 @@ local function updateLookAngles(dt: number)
 				dirty = true
 			end
 
+			if not motor.Enabled then
+				dirty = false
+				continue
+			end
+
 			if dirty then
 				-- stylua: ignore
 				local cf = CFrame.Angles(0, fPitch, 0)
