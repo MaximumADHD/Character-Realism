@@ -65,6 +65,11 @@ type AngleState = {
 type MotorState = {
 	Motor: Motor6D | AnimationConstraint,
 	LastTransform: CFrame?,
+	
+	-- R6 BACKWARDS COMPATIBILITY --
+	-- Sorry, Max.
+	Origin: Attachment?,
+	C0: CFrame?,
 }
 
 type JointRotator = {
@@ -129,7 +134,8 @@ local function addMotor(rotator, motor: Motor6D | AnimationConstraint)
 	-- before attempting to use it in the rotator.
 
 	awaitValue(motor, "Active", function()
-		local part1 = assert(motor:IsA("AnimationConstraint") and motor.Attachment1 or motor.Part1)
+		local part0 = assert(motor:IsA("AnimationConstraint") and motor.Attachment0 or motor.Part0) -- This will be used to get an R6 attachment.
+		local part1 = assert(motor:IsA("AnimationConstraint") and motor.Attachment1 or motor.Part1) -- This is unaffected.
 		
 		if part1:IsA("Attachment") then
 			part1 = part1.Parent ~= nil and part1.Parent or part1
@@ -137,7 +143,17 @@ local function addMotor(rotator, motor: Motor6D | AnimationConstraint)
 
 		local data: MotorState = {
 			Motor = motor,
+			
+			-- Still, R6 backwards compatibility, *sigh*.
+			C0 = motor.C0,
+			Origin = nil,
 		}
+		
+		task.spawn(function()
+			-- Yup. I get that this may look ugly.
+			data.Origin = motor:IsA("AnimationConstraint") and motor.Attachment0 or
+				motor.Part0 and motor.Part0:WaitForChild(motor.Name .. "RigAttachment", 10) :: Attachment
+		end)
 
 		local id = part1.Name
 		rotator.Motors[id] = data
@@ -232,12 +248,12 @@ local function updateLookAngles(dt: number)
 
 		if pitch ~= module.Pitch then
 			module.Pitch = pitch
-			dirty = true
+			dirty = typeof(dirty) == "boolean" and true
 		end
 
 		if yaw ~= module.Yaw then
 			module.Yaw = yaw
-			dirty = true
+			dirty = typeof(dirty) == "boolean" and true
 		end
 
 		if dirty then
@@ -268,6 +284,10 @@ local function updateLookAngles(dt: number)
 
 		local humanoid = character:FindFirstChildOfClass("Humanoid")
 		local rootPart = humanoid and humanoid.RootPart
+		
+		-- For the tool holding hack. Yeah.
+		local leftHand = character:FindFirstChild("Left Arm") or character:FindFirstChild("LeftHand")
+		local rightHand = character:FindFirstChild("Right Arm") or character:FindFirstChild("RightHand")
 
 		if not rootPart then
 			continue
@@ -292,8 +312,13 @@ local function updateLookAngles(dt: number)
 		for name, factors in Config.RotationFactors do
 			local data = motors and motors[name]
 			local motor = data and data.Motor
+			local origin = data and data.Origin
 
 			if not motor then
+				continue
+			end
+			
+			if not motor.Enabled then
 				continue
 			end
 
@@ -302,48 +327,100 @@ local function updateLookAngles(dt: number)
 
 			local fPitch = myPitch * factors.Pitch
 			local fYaw = myYaw * factors.Yaw
+			
+			if humanoid and humanoid.RigType == Enum.HumanoidRigType.R6 then
+				if origin then
+					
+					local part0 = motor.Part0
+					local setPart0 = origin.Parent
 
-			-- HACK: Make the arms rotate with a tool.
+					if part0 and part0 ~= setPart0 then
+						local newOrigin = part0:FindFirstChild(origin.Name)
+
+						if newOrigin and newOrigin:IsA("Attachment") then
+							origin = newOrigin
+							data.Origin = newOrigin
+						end
+					end
+
+					origin = origin.CFrame
+				elseif data.C0 then
+					origin = data.C0
+				else
+					continue
+				end
+			end
+
+			-- HACK: Make the arm rotate with a tool.
 			if name:sub(-4) == " Arm" or name:sub(-8) == "UpperArm" then
 				local tool = character:FindFirstChildOfClass("Tool")
 
 				if tool and not tool:HasTag("NoArmRotation") then
-					if rootPart and name:sub(1, 5) == "Right" and rootPart.AssemblyRootPart ~= rootPart then
-						fPitch = pitch * 1.3
-						fYaw = yaw * 1.3
-					else
-						fYaw = yaw * 0.8
+					-- This grip thingy may be useful later on.
+					local grip = rightHand:FindFirstChild("RightGrip") or
+						leftHand:FindFirstChild("LeftGrip")
+
+					-- This aimed to fix opposite arm rotating with the one holding things, looking
+					-- really unnatural. Funnily enough, this also fixed the flickering issue. Yay.
+					if grip.Name == "RightGrip" and (name:sub(1, 5) == "Right" or motor.Name:sub(1, 5) == "Right") or
+						grip.Name == "LeftGrip" and (name:sub(1, 4) == "Left" or motor.Name:sub(1, 4) == "Left") then
+
+						if rootPart and rootPart.AssemblyRootPart ~= rootPart then
+							fPitch = pitch * 1.3
+							fYaw = yaw * 1.3
+						else
+							fYaw = yaw * 0.8
+						end
+						
 					end
 				end
 			end
-
+			
 			local dirty = false
-
+			
+			-- I made them sensitive to 'dirty' not existing.
+			-- Not sure, but may be needed later on.
 			if fPitch ~= pitchState.Value then
 				pitchState.Value = fPitch
-				dirty = true
+				dirty = typeof(dirty) == "boolean" and true
 			end
 
 			if fYaw ~= yawState.Value then
 				yawState.Value = fYaw
-				dirty = true
+				dirty = typeof(dirty) == "boolean" and true
 			end
-
-			if not motor.Enabled then
-				dirty = false
-				continue
-			end
+			
 
 			if dirty then
 				-- stylua: ignore
 				local cf = CFrame.Angles(0, fPitch, 0)
 					* CFrame.Angles(fYaw, 0, 0)
 
-				-- TODO: What's the correct way to handle this?
-				if numTracks > 0 then
-					motor.Transform *= cf
+				-- This is for R6 !!
+				if humanoid and humanoid.RigType == Enum.HumanoidRigType.R6 then
+					local rot = typeof(origin) == "CFrame" and origin.Rotation.Rotation
+					
+					-- Nothing came up my mind for what this nice value's name could be.
+					local _motor = motor:IsA("AnimationConstraint") and motor.Attachment0 or motor
+					
+					if typeof(rot) == "CFrame" and typeof(origin) == "CFrame" then
+						
+						if _motor:IsA("Attachment") then
+							_motor.CFrame = origin * rot:Inverse() * cf
+						elseif _motor:IsA("Motor6D") then
+							_motor.C0 = origin * rot:Inverse() * cf * rot
+						end
+						
+					end
 				else
-					motor.Transform = cf
+
+					-- TODO: What's the correct way to handle this?
+					if numTracks > 0 then
+						motor.Transform *= cf -- I believe it's this one
+					else
+						motor.Transform = cf
+					end
+					
 				end
 			end
 		end
@@ -422,7 +499,7 @@ function module.MountMaterialSounds(humanoid: Instance)
 	end
 
 	local character = assert(humanoid.Parent)
-	local running: Sound?
+	local running: Sound -- works the same even without the question mark. at least the strict is happy.
 
 	local function updateRunningSoundId()
 		local soundId = Config.Sounds.Concrete
