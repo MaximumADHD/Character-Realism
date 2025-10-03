@@ -47,7 +47,7 @@ type ITransparencyController = {
 
 	Update: (...any) -> (),
 	BaseUpdate: (...any) -> (),
-	SetSubject: (self: any, subject: Instance) -> (),
+	SetSubject: (self: any, subject: Instance?) -> (),
 
 	SetupTransparency: (self: any, character: Model, ...any) -> (),
 	BaseSetupTransparency: (self: any, character: Model, ...any) -> (),
@@ -72,7 +72,7 @@ end
 
 function FirstPerson.GetSubjectPosition(self: IBaseCamera)
 	if FirstPerson.IsInFirstPerson() then
-		local camera = workspace.CurrentCamera
+		local camera = workspace.CurrentCamera :: Camera
 		local subject = camera.CameraSubject
 
 		if subject and subject:IsA("Humanoid") and subject.Health > 0 then
@@ -118,7 +118,7 @@ function FirstPerson.IsValidPartToModify(_self: any, part: Instance?)
 				end
 			end
 
-			for _, child in pairs(part:GetChildren()) do
+			for _, child in pairs(part and part:GetChildren() or {}) do
 				if child:IsA("Attachment") then
 					if HEAD_ATTACHMENTS[child.Name] then
 						return true
@@ -167,7 +167,7 @@ local function updateTransparency(self: ITransparencyController, ...)
 		self.ForceRefresh = false
 
 		if type(self.SetSubject) == "function" then
-			local camera = workspace.CurrentCamera
+			local camera = workspace.CurrentCamera :: Camera
 			self:SetSubject(camera.CameraSubject)
 		end
 	end
@@ -229,7 +229,7 @@ end
 -- and needs to have its first person movement smoothened out.
 
 local function onRotationTypeChanged()
-	local camera = workspace.CurrentCamera
+	local camera = workspace.CurrentCamera :: Camera
 	local subject = camera and camera.CameraSubject
 
 	if subject and subject:IsA("Humanoid") then
@@ -269,7 +269,7 @@ local function onRotationTypeChanged()
 				end
 
 				if subject.Sit and subject.SeatPart then
-					local root = rootPart:GetRootPart()
+					local root = rootPart.AssemblyRootPart --:GetRootPart()
 
 					if root ~= rootPart then
 						canRotate = false
