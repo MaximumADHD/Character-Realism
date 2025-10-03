@@ -5,6 +5,16 @@
 
 return {
 	-----------------------------------
+	-- A configuration which allows
+	-- you to change the behaviour of
+	-- the Character Realism.
+	-----------------------------------
+	
+	SkipLookAngle = false,
+	SkipMaterialSounds = false,
+	
+	
+	-----------------------------------
 	-- A dictionary mapping materials
 	-- to walking sound ids.
 	-----------------------------------
@@ -20,6 +30,7 @@ return {
 		Gravel = 4776998555,
 		Marble = 4776962643,
 	},
+
 
 	---------------------------------------
 	-- A dictionary mapping materials to
@@ -56,6 +67,7 @@ return {
 		DiamondPlate = "Metal",
 		CorrodedMetal = "Metal",
 	},
+	
 
 	---------------------------------------------
 	-- Multiplier values (in radians) for each
@@ -71,6 +83,7 @@ return {
 			Pitch = 0.8,
 			Yaw = 0.75,
 		},
+
 
 		-------------------------------
 		-- R15
@@ -90,6 +103,7 @@ return {
 			Pitch = 0.0,
 			Yaw = -0.5,
 		},
+
 
 		-------------------------------
 		-- R6
