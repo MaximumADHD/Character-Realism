@@ -9,11 +9,12 @@ return {
 	-- you to change the behaviour of
 	-- the Character Realism.
 	-----------------------------------
-	
+
 	SkipLookAngle = false,
+	SkipFirstPerson = false,
 	SkipMaterialSounds = false,
-	
-	
+
+
 	-----------------------------------
 	-- A dictionary mapping materials
 	-- to walking sound ids.
@@ -67,7 +68,7 @@ return {
 		DiamondPlate = "Metal",
 		CorrodedMetal = "Metal",
 	},
-	
+
 
 	---------------------------------------------
 	-- Multiplier values (in radians) for each
