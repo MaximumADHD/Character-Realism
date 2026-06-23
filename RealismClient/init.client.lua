@@ -575,6 +575,17 @@ local function onHumanoidAdded(humanoid: Instance)
 		if not Config.SkipMaterialSounds then
 			task.spawn(module.MountMaterialSounds, humanoid)
 		end
+
+		if humanoid.Parent then
+			local head = humanoid.Parent:FindFirstChild("Head")
+			
+			if head then
+				if head:IsA("BasePart") then
+					head.CanCollide = true
+				end
+			end
+		end
+		
 	end
 end
 
