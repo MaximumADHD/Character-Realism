@@ -89,20 +89,6 @@ local function roundNearestInterval(n: number, factor: number): number
 	return round(n / factor) * factor
 end
 
-local function stepTowards(value: number, goal: number, rate: number): number
-	local result = value
-
-	if math.abs(value - goal) < rate then
-		result = goal
-	elseif value > goal then
-		result = value - rate
-	elseif value < goal then
-		result = value + rate
-	end
-
-	return result
-end
-
 local function awaitValue<T, Args...>(object: any, prop: string, andThen: (T, Args...) -> (), ...: Args...): thread
 	return task.spawn(function(...)
 		local timeOut = os.clock() + 10
@@ -130,7 +116,7 @@ local function addMotor(rotator, motor: Motor6D | AnimationConstraint)
 
 	awaitValue(motor, "Active", function()
 		local part1 = assert(motor:IsA("AnimationConstraint") and motor.Attachment1 or motor.Part1)
-		
+
 		if part1:IsA("Attachment") then
 			part1 = part1.Parent ~= nil and part1.Parent or part1
 		end
@@ -200,17 +186,18 @@ end
 -- Interpolates the current value of a rotator
 -- state (pitch/yaw) towards its goal value.
 
-local function stepValue(state: AngleState, dt: number)
-	local current = state.Current or 0
+local function expSmooth(state: AngleState, tau: number, dt: number)
 	local goal = state.Goal
 
-	local pan = 5 / (dt * 60)
-	local rate = math.min(1, (dt * 20) / 3)
+	if tau <= 0 then
+		return state.Goal
+	else
+		local current = state.Current
+		local alpha = 1 - math.exp(-dt / tau)
 
-	local step = math.min(rate, math.abs(goal - current) / pan)
-	state.Current = stepTowards(current, goal, step)
-
-	return state.Current
+		state.Current = current + (goal - current) * alpha
+		return state.Current
+	end
 end
 
 -- Called to update all of the look-angles being tracked
@@ -277,10 +264,10 @@ local function updateLookAngles(dt: number)
 		local numTracks = animator and #animator:GetPlayingAnimationTracks() or 0
 
 		local pitchState = rotator.Pitch
-		stepValue(pitchState, stepDelta)
+		expSmooth(pitchState, 0.1, stepDelta)
 
 		local yawState = rotator.Yaw
-		stepValue(yawState, stepDelta)
+		expSmooth(yawState, 0.1, stepDelta)
 
 		local motors = rotator.Motors
 		rotator.LastStep = now
