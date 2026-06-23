@@ -47,7 +47,7 @@ type ITransparencyController = {
 
 	Update: (...any) -> (),
 	BaseUpdate: (...any) -> (),
-	SetSubject: (self: any, subject: Instance) -> (),
+	SetSubject: (self: any, subject: Instance?) -> (),
 
 	SetupTransparency: (self: any, character: Model, ...any) -> (),
 	BaseSetupTransparency: (self: any, character: Model, ...any) -> (),
@@ -118,7 +118,7 @@ function FirstPerson.IsValidPartToModify(_self: any, part: Instance?)
 				end
 			end
 
-			for _, child in pairs(part:GetChildren()) do
+			for _, child in pairs(part and part:GetChildren() or {}) do
 				if child:IsA("Attachment") then
 					if HEAD_ATTACHMENTS[child.Name] then
 						return true
@@ -269,7 +269,7 @@ local function onRotationTypeChanged()
 				end
 
 				if subject.Sit and subject.SeatPart then
-					local root = rootPart:GetRootPart()
+					local root = rootPart.AssemblyRootPart --:GetRootPart()
 
 					if root ~= rootPart then
 						canRotate = false
@@ -316,9 +316,20 @@ function FirstPerson.Start()
 	FirstPerson.Started = true
 
 	task.spawn(function()
+		local StarterPlayer = game:GetService("StarterPlayer")
 		local requireUnsafe = require :: any
+		
 		local playerScripts = player:WaitForChild("PlayerScripts")
-		local playerModule = playerScripts:WaitForChild("PlayerModule")
+		local playerModule = StarterPlayer:WaitForChild("PlayerModule", 1)
+		
+		if not playerModule then
+			playerModule = playerScripts:WaitForChild("PlayerModule")
+		end
+		
+		if not playerModule then
+			warn("Start - Could not find PlayerModule!")
+			return
+		end
 
 		local baseCamera = playerModule:FindFirstChild("BaseCamera", true)
 		local transparency = playerModule:FindFirstChild("TransparencyController", true)
